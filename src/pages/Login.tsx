@@ -70,6 +70,20 @@ const Login = () => {
       );
       window.localStorage.removeItem("magicLinkEmail");
       await ensureUserRow();
+
+      // wait until user is loaded in store, or 5s timeout
+      await Promise.race([
+        new Promise<void>((resolve) => {
+          const unsub = useApp.subscribe((s) => {
+            if (s.authReady && s.usersReady && s.currentUserId) {
+              unsub();
+              resolve();
+            }
+          });
+        }),
+        new Promise<void>((resolve) => setTimeout(resolve, 5000)),
+      ]);
+
       navigate("/");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Magic link sign-in failed.";
