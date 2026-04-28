@@ -10,6 +10,7 @@ import {
   sendSignInLinkToEmail,
   signInWithEmailAndPassword,
   signInWithEmailLink,
+  signInAnonymously,
 } from "firebase/auth";
 import { toast } from "sonner";
 import { useApp } from "@/data/store";
@@ -26,7 +27,7 @@ const Login = () => {
   const [busy, setBusy] = useState(false);
   const [magicSent, setMagicSent] = useState(false);
   const [magicLinkDetected, setMagicLinkDetected] = useState(false);
-
+  const [loginCasDetected, setLoginCasDetected] = useState(false);
   const backendUrlRaw =
     (import.meta.env.VITE_BACKEND_URL as string | undefined)?.trim() || "";
   const backendUrl =
@@ -93,9 +94,91 @@ const Login = () => {
     }
   };
 
+  const completeHKUSTSignup = async () => {
+    const storedEmail = window.localStorage.getItem("magicLinkEmail") ?? "";
+    const effectiveEmail = (email || storedEmail).trim();
+    if (!effectiveEmail) {
+      setError("Enter the email you used for the magic link.");
+      return;
+    }
+
+    setBusy(true);
+    setError(null);
+    try {
+      await signInAnonymously(
+        firebaseAuth
+      );
+      await ensureUserRow();
+
+      // wait until user is loaded in store, or 5s timeout
+      await Promise.race([
+        new Promise<void>((resolve) => {
+          const unsub = useApp.subscribe((s) => {
+            if (s.authReady && s.usersReady && s.currentUserId) {
+              unsub();
+              resolve();
+            }
+          });
+        }),
+        new Promise<void>((resolve) => setTimeout(resolve, 5000)),
+      ]);
+
+      navigate("/");
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : "Magic link sign-in failed.";
+      setError(msg);
+    } finally {
+      setBusy(false);
+    }
+  };
+
   useEffect(() => {
     // If this page is opened from a magic-link, we may need the user to type their email
     // (e.g. link opened on a different device/browser with no localStorage state).
+
+    // If this is opened from CAS (login with HKUST address), get ticket
+    // Check for the ?ticket in the URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const ticket = urlParams.get("ticket"); // Get the value of the ticket parameter
+
+    if (ticket) {
+      console.log("Ticket found:", ticket); // Log the ticket if present
+
+      fetch(`${backendUrl.replace(/\/$/, "")}/cas/serviceValidate`, {
+        method: "POST", // Specify the method as POST
+        credentials: "include", // Include credentials
+        headers: {
+          "Content-Type": "application/json", // Set the content type to JSON
+        },
+        body: JSON.stringify({ ticket }), // Stringify the body object
+      })
+        .then((res) => res.json())
+        .then((data) => {
+          console.log("serviceValidate", data.message);
+          console.log("serviceValidate", data.message?.user);
+
+          if (data.message && data.message.user) {
+            // User is authenticated, now sign them in
+            // You might want to store the user's info in your app's state or database
+            console.log("User authenticated:", data.message.user);
+
+            // Example: Set the user's email in the email input field
+            setHkustEmail(data.message.attributes.mail);
+            setFullName(data.message.attributes.name);
+          }
+
+          setLoginCasDetected(true);
+          /*history.replaceState(
+            { key: "value" },
+            "Title",
+            process.env.NEXT_PUBLIC_BASE_URL + "/cas",
+          );*/
+        })
+        .catch((error) => {
+          console.error("Error:", error); // Log any errors
+        });
+    }
+
     if (!isSignInWithEmailLink(firebaseAuth, window.location.href)) return;
     setMagicLinkDetected(true);
 
@@ -104,16 +187,6 @@ const Login = () => {
     if (storedEmail && !email) setEmail(storedEmail);
     if (storedEmail) void completeMagicLink();
     // eslint-disable-next-line react-hooks/exhaustive-deps
-
-    // If this is opened from CAS (login with HKUST address), get ticket
-    // Check for the ?ticket in the URL
-    const urlParams = new URLSearchParams(window.location.search);
-    const ticket = urlParams.get("ticket"); // Get the value of the ticket parameter
-
-    console.log("urlparams,", urlParams);
-    if (ticket) {
-      console.log("Ticket found:", ticket); // Log the ticket if present
-    }
   }, []);
 
   const handleSignIn = async () => {
@@ -177,7 +250,7 @@ const Login = () => {
     }
   };
 
-  const handleHKUSTLogin = async () => {
+  const handleHKUSTSignup = async () => {
     setError(null);
 
     console.log("redirecting to cas");
@@ -295,6 +368,12 @@ const Login = () => {
                 </p>
               ) : null}
 
+              {loginCasDetected ? (
+                <p className="text-sm text-muted-foreground">
+                  Registration with HKUST address detected.
+                </p>
+              ) : null}
+
               <Button
                 className="w-full"
                 onClick={() => void handleSignIn()}
@@ -356,23 +435,39 @@ const Login = () => {
                     />
                   </div>
                 </div>
-                <Button
-                  className="mt-4 w-full"
-                  variant="outline"
-                  onClick={() => void handleMagicLink()}
-                  disabled={busy || !(email.trim() || hkustEmail.trim())}
-                >
-                  {busy ? "Sending..." : "Email me a magic link (sign up)"}
-                </Button>
-                Or
-                <Button
-                  className="mt-4 w-full"
-                  variant="outline"
-                  onClick={() => void handleHKUSTLogin()}
-                  disabled={busy}
-                >
-                  {busy ? "Sending..." : "Sign up with HKUST address"}
-                </Button>
+                {loginCasDetected ? (
+                  <>
+                    {" "}
+                    <Button
+                      className="mt-4 w-full"
+                      variant="outline"
+                      onClick={() => void completeHKUSTSignup()}
+                      disabled={busy}
+                    >
+                      {busy ? "Sending..." : "Confirm sign up"}
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      className="mt-4 w-full"
+                      variant="outline"
+                      onClick={() => void handleMagicLink()}
+                      disabled={busy || !(email.trim() || hkustEmail.trim())}
+                    >
+                      {busy ? "Sending..." : "Email me a magic link (sign up)"}
+                    </Button>
+                    Or
+                    <Button
+                      className="mt-4 w-full"
+                      variant="outline"
+                      onClick={() => void handleHKUSTSignup()}
+                      disabled={busy}
+                    >
+                      {busy ? "Sending..." : "Sign up with HKUST address"}
+                    </Button>
+                  </>
+                )}
                 {magicLinkDetected ? (
                   <Button
                     className="mt-2 w-full"
