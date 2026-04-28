@@ -70,6 +70,20 @@ const Login = () => {
       );
       window.localStorage.removeItem("magicLinkEmail");
       await ensureUserRow();
+
+      // wait until user is loaded in store, or 5s timeout
+      await Promise.race([
+        new Promise<void>((resolve) => {
+          const unsub = useApp.subscribe((s) => {
+            if (s.authReady && s.usersReady && s.currentUserId) {
+              unsub();
+              resolve();
+            }
+          });
+        }),
+        new Promise<void>((resolve) => setTimeout(resolve, 5000)),
+      ]);
+
       navigate("/");
     } catch (e) {
       const msg = e instanceof Error ? e.message : "Magic link sign-in failed.";
@@ -90,6 +104,16 @@ const Login = () => {
     if (storedEmail && !email) setEmail(storedEmail);
     if (storedEmail) void completeMagicLink();
     // eslint-disable-next-line react-hooks/exhaustive-deps
+
+    // If this is opened from CAS (login with HKUST address), get ticket
+    // Check for the ?ticket in the URL
+    const urlParams = new URLSearchParams(window.location.search);
+    const ticket = urlParams.get("ticket"); // Get the value of the ticket parameter
+
+    console.log("urlparams,", urlParams);
+    if (ticket) {
+      console.log("Ticket found:", ticket); // Log the ticket if present
+    }
   }, []);
 
   const handleSignIn = async () => {
@@ -144,6 +168,32 @@ const Login = () => {
       window.localStorage.setItem("magicLinkEmail", e);
       setMagicSent(true);
       toast.success(`Magic link sent to ${e}. Check inbox + spam/junk.`);
+    } catch (err) {
+      const msg =
+        err instanceof Error ? err.message : "Could not send magic link.";
+      setError(`${msg} Check Firebase Auth settings for Email Link sign-in.`);
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleHKUSTLogin = async () => {
+    setError(null);
+
+    console.log("redirecting to cas");
+
+    try {
+      setBusy(true);
+
+      navigate(
+        "https://cas.ust.hk/cas/login?service=" +
+          "http://localhost:3000/login" +
+          "",
+      );
+      /*if (!email.trim()) setEmail(e);
+      window.localStorage.setItem("magicLinkEmail", e);
+      setMagicSent(true);
+      toast.success(`Magic link sent to ${e}. Check inbox + spam/junk.`);*/
     } catch (err) {
       const msg =
         err instanceof Error ? err.message : "Could not send magic link.";
@@ -306,7 +356,6 @@ const Login = () => {
                     />
                   </div>
                 </div>
-
                 <Button
                   className="mt-4 w-full"
                   variant="outline"
@@ -315,7 +364,15 @@ const Login = () => {
                 >
                   {busy ? "Sending..." : "Email me a magic link (sign up)"}
                 </Button>
-
+                Or
+                <Button
+                  className="mt-4 w-full"
+                  variant="outline"
+                  onClick={() => void handleHKUSTLogin()}
+                  disabled={busy}
+                >
+                  {busy ? "Sending..." : "Sign up with HKUST address"}
+                </Button>
                 {magicLinkDetected ? (
                   <Button
                     className="mt-2 w-full"
