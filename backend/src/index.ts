@@ -168,6 +168,38 @@ app.post("/admin/users", requireFirebaseAuth, requireAdminRole, async (req, res)
   return res.json({ ok: true, id });
 });
 
+app.patch("/admin/users/:id/role", requireFirebaseAuth, requireAdminRole, async (req, res) => {
+  const userId = (req.params.id ?? "").toString().trim();
+  const nextRole = (req.body?.role ?? "").toString().trim();
+  if (!userId || !nextRole) {
+    return res.status(400).json({ error: "user id and role are required" });
+  }
+  if (!["admin", "instructor", "student"].includes(nextRole)) {
+    return res.status(400).json({ error: "Invalid role" });
+  }
+
+  const db = getFirestore();
+  const ref = db.collection("users").doc(userId);
+  const snap = await ref.get();
+  if (!snap.exists) return res.status(404).json({ error: "User not found" });
+  await ref.update({ role: nextRole });
+
+  return res.json({ ok: true });
+});
+
+app.delete("/admin/users/:id", requireFirebaseAuth, requireAdminRole, async (req, res) => {
+  const userId = (req.params.id ?? "").toString().trim();
+  if (!userId) return res.status(400).json({ error: "user id is required" });
+
+  const db = getFirestore();
+  const ref = db.collection("users").doc(userId);
+  const snap = await ref.get();
+  if (!snap.exists) return res.status(404).json({ error: "User not found" });
+  await ref.delete();
+
+  return res.json({ ok: true });
+});
+
 app.post("/admin/courses", requireFirebaseAuth, requireAdminRole, async (req, res) => {
   const { code, name, term } = (req.body ?? {}) as { code?: string; name?: string; term?: string };
   if (!code?.trim() || !name?.trim() || !term?.trim()) {

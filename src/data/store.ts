@@ -246,9 +246,57 @@ export const useApp = create<AppState>()((set, get) => {
       await setDoc(doc(firestore, "users", id), { ...u, id, avatarColor } satisfies User);
     },
     updateUserRole: async (id, role) => {
+      const fbUser = firebaseAuth.currentUser;
+      if (backendUrl && fbUser) {
+        const token = await fbUser.getIdToken();
+        const endpoint = `${backendUrl.replace(/\/$/, "")}/admin/users/${id}/role`;
+        const res = await fetch(endpoint, {
+          method: "PATCH",
+          headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ role }),
+        });
+        if (!res.ok) {
+          let detail = "";
+          try {
+            const data = (await res.json()) as { error?: string };
+            detail = data?.error ? `: ${data.error}` : "";
+          } catch {
+            // ignore
+          }
+          throw new Error(`Backend user role update failed (${res.status})${detail}`);
+        }
+        return;
+      }
+
       await updateDoc(doc(firestore, "users", id), { role });
     },
     deleteUser: async (id) => {
+      const fbUser = firebaseAuth.currentUser;
+      if (backendUrl && fbUser) {
+        const token = await fbUser.getIdToken();
+        const endpoint = `${backendUrl.replace(/\/$/, "")}/admin/users/${id}`;
+        const res = await fetch(endpoint, {
+          method: "DELETE",
+          headers: {
+            authorization: `Bearer ${token}`,
+          },
+        });
+        if (!res.ok) {
+          let detail = "";
+          try {
+            const data = (await res.json()) as { error?: string };
+            detail = data?.error ? `: ${data.error}` : "";
+          } catch {
+            // ignore
+          }
+          throw new Error(`Backend user delete failed (${res.status})${detail}`);
+        }
+        return;
+      }
+
       await deleteDoc(doc(firestore, "users", id));
     },
 
