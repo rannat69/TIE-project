@@ -22,7 +22,7 @@ interface Props {
 }
 
 export const WeeklyUpdateCard = ({ update, viewer, defaultOpen = false }: Props) => {
-  const editGoals = useApp((s) => s.editUpdateGoals);
+  const reviewerEditUpdate = useApp((s) => s.reviewerEditUpdate);
   const resubmitUpdate = useApp((s) => s.resubmitUpdate);
   const setApproval = useApp((s) => s.setApproval);
   const addComment = useApp((s) => s.addComment);
@@ -48,7 +48,7 @@ export const WeeklyUpdateCard = ({ update, viewer, defaultOpen = false }: Props)
     project.studentIds.includes(currentUserId);
 
   const saveEdits = () => {
-    editGoals(update.id, thisWeek, nextWeek);
+    reviewerEditUpdate(update.id, { thisWeekGoals: thisWeek, nextWeekGoals: nextWeek, blockers, progress, links });
     setEditing(false);
   };
 

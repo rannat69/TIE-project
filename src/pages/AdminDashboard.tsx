@@ -32,6 +32,7 @@ const AdminDashboard = () => {
     users, courses, projects, updates,
     addUser, deleteUser, updateUserRole,
     addCourse, assignInstructor, removeInstructor,
+    addStudentToCourse, removeStudentFromCourse,
     addProject, assignStudentToProject, removeStudentFromProject,
   } = useApp();
 
@@ -216,6 +217,53 @@ const AdminDashboard = () => {
                     <SelectContent>
                       {instructors.filter((i) => !c.instructorIds.includes(i.id)).map((i) => (
                         <SelectItem key={i.id} value={i.id}>{i.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+
+                  <div className="mb-2 mt-5 text-xs font-medium uppercase tracking-wider text-muted-foreground">Students</div>
+                  <div className="mb-3 flex flex-wrap gap-2">
+                    {((c.studentIds ?? []) as string[]).map((sid) => {
+                      const student = users.find((u) => u.id === sid);
+                      if (!student) return null;
+                      return (
+                        <span key={sid} className="inline-flex items-center gap-2 rounded-full border border-border bg-card py-1 pl-1 pr-2 text-xs">
+                          <Avatar userId={sid} size={20} />
+                          {student.name}
+                          <button
+                            onClick={async () => {
+                              try {
+                                await removeStudentFromCourse(c.id, sid);
+                                toast.success("Student removed from course.");
+                              } catch (e) {
+                                const msg = e instanceof Error ? e.message : "Unknown error";
+                                toast.error(`Could not remove student: ${msg}`);
+                              }
+                            }}
+                            className="ml-1 text-muted-foreground hover:text-destructive"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      );
+                    })}
+                    {(c.studentIds?.length ?? 0) === 0 && <span className="text-xs text-muted-foreground">No students yet.</span>}
+                  </div>
+                  <Select
+                    onValueChange={async (sid) => {
+                      try {
+                        await addStudentToCourse(c.id, sid);
+                        toast.success("Student added to course.");
+                      } catch (e) {
+                        const msg = e instanceof Error ? e.message : "Unknown error";
+                        toast.error(`Could not add student: ${msg}`);
+                      }
+                    }}
+                  >
+                    <SelectTrigger className="h-9 text-sm"><SelectValue placeholder="Add student to course…" /></SelectTrigger>
+                    <SelectContent>
+                      {students.filter((s) => !((c.studentIds ?? []) as string[]).includes(s.id)).map((s) => (
+                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>

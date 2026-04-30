@@ -61,10 +61,9 @@ interface AppState {
   // updates
   submitUpdate: (u: Omit<WeeklyUpdate, "id" | "submittedAt" | "status" | "comments">) => void;
   resubmitUpdate: (updateId: string, patch: Partial<Pick<WeeklyUpdate, "thisWeekGoals" | "nextWeekGoals" | "blockers" | "progress" | "links">>) => void;
-  editUpdateGoals: (
+  reviewerEditUpdate: (
     updateId: string,
-    thisWeekGoals: WeeklyGoal[],
-    nextWeekGoals: WeeklyGoal[],
+    patch: Partial<Pick<WeeklyUpdate, "thisWeekGoals" | "nextWeekGoals" | "blockers" | "progress" | "links">>,
   ) => void;
   setApproval: (updateId: string, status: ApprovalStatus) => void;
   addComment: (updateId: string, authorId: string, text: string) => void;
@@ -630,33 +629,46 @@ export const useApp = create<AppState>()((set, get) => {
         fields,
       });
     },
-    editUpdateGoals: (updateId, thisWeekGoals, nextWeekGoals) => {
+    reviewerEditUpdate: (updateId, patch) => {
       if (backendUrl) {
-        // Reviewers should edit via UI + status/comment flows; keep direct goal edits local-dev only.
         void (async () => {
-          const endpoint = `${backendUrl.replace(/\/$/, "")}/updates/${encodeURIComponent(updateId)}/resubmit`;
+          const endpoint = `${backendUrl.replace(/\/$/, "")}/updates/${encodeURIComponent(updateId)}/reviewerEdit`;
           const res = await fetch(endpoint, {
             method: "PATCH",
             headers: {
               "content-type": "application/json",
               ...(await authHeader()),
             },
-            body: JSON.stringify({ thisWeekGoals, nextWeekGoals }),
+            body: JSON.stringify(patch),
           });
-          if (!res.ok) throw new Error(`Edit update failed (${res.status})`);
+          if (!res.ok) throw new Error(`Reviewer edit update failed (${res.status})`);
         })().catch(() => {});
         return;
       }
 
       const editorId = get().currentUserId ?? "unknown";
       const at = new Date().toISOString();
-      void updateDoc(doc(firestore, "updates", updateId), { thisWeekGoals, nextWeekGoals });
+      void updateDoc(doc(firestore, "updates", updateId), {
+        ...(patch.thisWeekGoals ? { thisWeekGoals: patch.thisWeekGoals } : {}),
+        ...(patch.nextWeekGoals ? { nextWeekGoals: patch.nextWeekGoals } : {}),
+        ...(patch.links ? { links: patch.links } : {}),
+        ...(patch.blockers !== undefined ? { blockers: (patch.blockers ?? "").toString() } : {}),
+        ...(patch.progress !== undefined ? { progress: Number.isFinite(Number(patch.progress)) ? Number(patch.progress) : 0 } : {}),
+        lastEditedAt: at,
+        lastEditedBy: editorId,
+      });
       logUpdateEvent(updateId, {
         id: uid("evt"),
         type: "edited",
         at,
         byUserId: editorId,
-        fields: ["thisWeekGoals", "nextWeekGoals"],
+        fields: [
+          ...(patch.thisWeekGoals ? (["thisWeekGoals"] as const) : []),
+          ...(patch.nextWeekGoals ? (["nextWeekGoals"] as const) : []),
+          ...(patch.blockers !== undefined ? (["blockers"] as const) : []),
+          ...(patch.progress !== undefined ? (["progress"] as const) : []),
+          ...(patch.links ? (["links"] as const) : []),
+        ],
         note: "Edited by reviewer",
       });
     },
