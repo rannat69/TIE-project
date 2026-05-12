@@ -50,8 +50,12 @@ const Login = () => {
   const pendingEmailLinkHrefRef = useRef<string | null>(null);
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
 
-  const backendUrlRaw = (import.meta.env.VITE_BACKEND_URL as string | undefined)?.trim() || "";
-  const backendUrl = backendUrlRaw === "." || backendUrlRaw === "/" ? window.location.origin : backendUrlRaw;
+  const backendUrlRaw =
+    (import.meta.env.VITE_BACKEND_URL as string | undefined)?.trim() || "";
+  const backendUrl =
+    backendUrlRaw === "." || backendUrlRaw === "/"
+      ? window.location.origin
+      : backendUrlRaw;
 
   const ensureUserRow = async () => {
     const fbUser = firebaseAuth.currentUser;
@@ -82,13 +86,23 @@ const Login = () => {
       try {
         await signInWithEmailLink(firebaseAuth, href, addr);
         window.localStorage.removeItem(EMAIL_LINK_STORAGE_KEY);
-        window.history.replaceState({}, document.title, `${window.location.origin}/login`);
+        window.history.replaceState(
+          {},
+          document.title,
+          `${window.location.origin}/login`,
+        );
         await ensureUserRow();
         toast.success("Signed in with email link.");
         navigate("/");
       } catch {
-        toast.error("This sign-in link is invalid or has expired. Request a new one.");
-        window.history.replaceState({}, document.title, `${window.location.origin}/login`);
+        toast.error(
+          "This sign-in link is invalid or has expired. Request a new one.",
+        );
+        window.history.replaceState(
+          {},
+          document.title,
+          `${window.location.origin}/login`,
+        );
       } finally {
         setBusy(false);
         emailLinkAutoSignInStarted = false;
@@ -128,7 +142,9 @@ const Login = () => {
     setError(null);
     const schoolLogin = hkustEmail.trim();
     if (!schoolLogin || !schoolLogin.includes("@")) {
-      setError("Please enter a valid school email — we use it as your account login.");
+      setError(
+        "Please enter a valid school email — we use it as your account login.",
+      );
       return;
     }
     if (!password) {
@@ -143,9 +159,14 @@ const Login = () => {
       toast.success("Account created.");
       navigate("/");
     } catch (e) {
-      const code = typeof e === "object" && e && "code" in e ? String((e as { code: string }).code) : "";
+      const code =
+        typeof e === "object" && e && "code" in e
+          ? String((e as { code: string }).code)
+          : "";
       if (code === "auth/email-already-in-use") {
-        setError("An account already exists for this school email. Switch to Sign in or use Forgot password.");
+        setError(
+          "An account already exists for this school email. Switch to Sign in or use Forgot password.",
+        );
       } else if (code === "auth/weak-password") {
         setError("Password is too weak. Use at least 6 characters.");
       } else if (code === "auth/invalid-email") {
@@ -175,7 +196,10 @@ const Login = () => {
       toast.success("Check your inbox for the sign-in link.");
       setForgotOpen(false);
     } catch (e) {
-      const code = typeof e === "object" && e && "code" in e ? String((e as { code: string }).code) : "";
+      const code =
+        typeof e === "object" && e && "code" in e
+          ? String((e as { code: string }).code)
+          : "";
       if (code === "auth/operation-not-allowed") {
         setForgotError(
           "Email link sign-in is turned off in Firebase. Enable “Email link (passwordless sign-in)” under Authentication → Sign-in method → Email/Password.",
@@ -197,9 +221,13 @@ const Login = () => {
     }
     try {
       setConfirmBusy(true);
-      await signInWithEmailLink(firebaseAuth, href, addr);
+      await signInWithEmailLink(firebaseAuth, addr, href);
       window.localStorage.removeItem(EMAIL_LINK_STORAGE_KEY);
-      window.history.replaceState({}, document.title, `${window.location.origin}/login`);
+      window.history.replaceState(
+        {},
+        document.title,
+        `${window.location.origin}/login`,
+      );
       await ensureUserRow();
       toast.success("Signed in with email link.");
       setConfirmEmailOpen(false);
@@ -207,7 +235,9 @@ const Login = () => {
       emailLinkConfirmDialogShown = false;
       navigate("/");
     } catch {
-      toast.error("That email does not match this link, or the link has expired.");
+      toast.error(
+        "That email does not match this link, or the link has expired.",
+      );
     } finally {
       setConfirmBusy(false);
     }
@@ -219,17 +249,27 @@ const Login = () => {
         <div className="mx-auto max-w-xl">
           <div className="mb-12 flex items-center gap-3">
             <div className="flex h-11 w-11 items-center justify-center rounded-lg shadow-elegant">
-              <img src="/favicon.svg" alt="Project Tracking" className="h-11 w-11" />
+              <img
+                src="/favicon.svg"
+                alt="Project Tracking"
+                className="h-11 w-11"
+              />
             </div>
             <div>
-              <h1 className="text-2xl font-semibold text-foreground">Project Tracking</h1>
-              <p className="text-sm text-muted-foreground">Student project tracking</p>
+              <h1 className="text-2xl font-semibold text-foreground">
+                Project Tracking
+              </h1>
+              <p className="text-sm text-muted-foreground">
+                Student project tracking
+              </p>
             </div>
           </div>
 
           <div className="mb-10">
             <h2 className="mb-2 text-4xl font-semibold leading-tight text-foreground lg:text-5xl">
-              {authMode === "signin" ? "Sign in to continue" : "Create your account"}
+              {authMode === "signin"
+                ? "Sign in to continue"
+                : "Create your account"}
             </h2>
             <p className="text-sm text-muted-foreground">
               {authMode === "signin"
@@ -267,7 +307,10 @@ const Login = () => {
 
               {authMode === "signin" ? (
                 <div className="space-y-2">
-                  <Label htmlFor="email" className="text-sm font-medium text-foreground">
+                  <Label
+                    htmlFor="email"
+                    className="text-sm font-medium text-foreground"
+                  >
                     Email
                   </Label>
                   <Input
@@ -288,7 +331,10 @@ const Login = () => {
               {authMode === "signup" ? (
                 <>
                   <div className="space-y-2">
-                    <Label htmlFor="fullName" className="text-sm font-medium text-foreground">
+                    <Label
+                      htmlFor="fullName"
+                      className="text-sm font-medium text-foreground"
+                    >
                       Full name (Surname, First name)
                     </Label>
                     <Input
@@ -300,7 +346,10 @@ const Login = () => {
                   </div>
                   <div className="grid gap-3 md:grid-cols-2">
                     <div className="space-y-2">
-                      <Label htmlFor="hkustEmail" className="text-sm font-medium text-foreground">
+                      <Label
+                        htmlFor="hkustEmail"
+                        className="text-sm font-medium text-foreground"
+                      >
                         School email (optional)
                       </Label>
                       <Input
@@ -316,7 +365,10 @@ const Login = () => {
                       />
                     </div>
                     <div className="space-y-2">
-                      <Label htmlFor="programme" className="text-sm font-medium text-foreground">
+                      <Label
+                        htmlFor="programme"
+                        className="text-sm font-medium text-foreground"
+                      >
                         Programme
                       </Label>
                       <Input
@@ -331,14 +383,23 @@ const Login = () => {
               ) : null}
 
               <div className="space-y-2">
-                <Label htmlFor="password" className="text-sm font-medium text-foreground">
+                <Label
+                  htmlFor="password"
+                  className="text-sm font-medium text-foreground"
+                >
                   Password
                 </Label>
                 <Input
                   id="password"
                   type="password"
-                  autoComplete={authMode === "signup" ? "new-password" : "current-password"}
-                  placeholder={authMode === "signup" ? "Choose a password (min. 6 characters)" : "Enter your password"}
+                  autoComplete={
+                    authMode === "signup" ? "new-password" : "current-password"
+                  }
+                  placeholder={
+                    authMode === "signup"
+                      ? "Choose a password (min. 6 characters)"
+                      : "Enter your password"
+                  }
                   value={password}
                   onChange={(e) => {
                     setPassword(e.target.value);
@@ -368,7 +429,9 @@ const Login = () => {
                 ) : null}
               </div>
 
-              {error ? <p className="text-sm font-medium text-destructive">{error}</p> : null}
+              {error ? (
+                <p className="text-sm font-medium text-destructive">{error}</p>
+              ) : null}
 
               {authMode === "signin" ? (
                 <Button
@@ -382,7 +445,12 @@ const Login = () => {
                 <Button
                   className="w-full"
                   onClick={() => void handleSignUp()}
-                  disabled={busy || !hkustEmail.trim() || !hkustEmail.includes("@") || !password}
+                  disabled={
+                    busy ||
+                    !hkustEmail.trim() ||
+                    !hkustEmail.includes("@") ||
+                    !password
+                  }
                 >
                   {busy ? "Signing up..." : "Sign up"}
                 </Button>
@@ -397,8 +465,9 @@ const Login = () => {
           <DialogHeader>
             <DialogTitle>Sign in with email link</DialogTitle>
             <DialogDescription>
-              Enter your account email and we will send you a magic link. After you open it, you will be signed in
-              without your password (you can keep using your password later if you like).
+              Enter your account email and we will send you a magic link. After
+              you open it, you will be signed in without your password (you can
+              keep using your password later if you like).
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
@@ -417,10 +486,18 @@ const Login = () => {
                 if (e.key === "Enter") void handleSendMagicLink();
               }}
             />
-            {forgotError ? <p className="text-sm font-medium text-destructive">{forgotError}</p> : null}
+            {forgotError ? (
+              <p className="text-sm font-medium text-destructive">
+                {forgotError}
+              </p>
+            ) : null}
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button type="button" variant="outline" onClick={() => setForgotOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setForgotOpen(false)}
+            >
               Cancel
             </Button>
             <Button
@@ -442,7 +519,11 @@ const Login = () => {
             emailLinkConfirmDialogShown = false;
             pendingEmailLinkHrefRef.current = null;
             if (isSignInWithEmailLink(firebaseAuth, window.location.href)) {
-              window.history.replaceState({}, document.title, `${window.location.origin}/login`);
+              window.history.replaceState(
+                {},
+                document.title,
+                `${window.location.origin}/login`,
+              );
             }
           }
         }}
@@ -451,8 +532,9 @@ const Login = () => {
           <DialogHeader>
             <DialogTitle>Confirm your email</DialogTitle>
             <DialogDescription>
-              Open the link on the same device and browser where you requested it for the fastest sign-in. If you
-              opened it elsewhere, enter the email address you used below.
+              Open the link on the same device and browser where you requested
+              it for the fastest sign-in. If you opened it elsewhere, enter the
+              email address you used below.
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-2">
@@ -470,7 +552,11 @@ const Login = () => {
             />
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button type="button" variant="outline" onClick={() => setConfirmEmailOpen(false)}>
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setConfirmEmailOpen(false)}
+            >
               Cancel
             </Button>
             <Button
