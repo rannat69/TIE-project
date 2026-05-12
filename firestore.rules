@@ -7,31 +7,31 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // USERS (readable to signed-in; writes only via backend/admin SDK)
+    // USERS (readable to signed-in; all writes via backend/Admin SDK only)
     match /users/{docId} {
       allow read: if signedIn();
       allow create, update, delete: if false;
     }
 
-    // COURSES (readable to signed-in; writes only via backend/admin SDK)
+    // COURSES (readable to signed-in; all writes via backend/Admin SDK only)
     match /courses/{docId} {
       allow read: if signedIn();
       allow create, update, delete: if false;
     }
 
-    // PROJECTS (readable to signed-in; writes only via backend/admin SDK)
+    // PROJECTS (readable to signed-in; all writes via backend/Admin SDK only)
     match /projects/{docId} {
       allow read: if signedIn();
       allow create, update, delete: if false;
     }
 
-    // UPDATES (read-only from client; writes only via backend/admin SDK)
+    // UPDATES (readable to signed-in; all writes via backend/Admin SDK only)
     match /updates/{docId} {
       allow read: if signedIn();
       allow create, update, delete: if false;
     }
 
-    // PURCHASE REQUESTS (read-only from client; writes only via backend/admin SDK)
+    // PURCHASE REQUESTS (readable to signed-in; all writes via backend/Admin SDK only)
     match /purchaseRequests/{docId} {
       allow read: if signedIn();
       allow create, update, delete: if false;
@@ -43,4 +43,3 @@ service cloud.firestore {
     }
   }
 }
-
