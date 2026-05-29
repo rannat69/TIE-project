@@ -39,15 +39,6 @@ Students must be **on the course roster** before they can be added to a project.
 
 If a student isn’t listed, add them to the **course roster** first.
 
-### Assign project support staff
-
-Project support is **project-scoped**: those instructors see only the teams they are assigned to (not other projects in the same course unless they are also on the course instructor list).
-
-In **Admin → Projects**, use **Project support** for the project:
-
-- Pick another **instructor** account to add.
-- Remove with **×**.
-
 ## 3) Weekly updates (review workflow)
 
 ### Where to review
