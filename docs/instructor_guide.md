@@ -2,6 +2,12 @@
 
 This guide covers what **course instructors** can do: manage courses/projects, review weekly updates, manage meetings, and approve purchase requests.
 
+## 0) Signing in
+
+- Enter your email address
+- You will then receive a link on that email address
+- Click that link, then press "Complete sign-in"
+
 ## 1) What you have access to
 
 - If you are on a course’s **instructor list** (`instructorIds`), you can see **all projects in that course** and use full course tools (roster, new projects, purchase approvals for those projects, etc.).
@@ -96,3 +102,9 @@ Comments remain open for back-and-forth even when the meeting is locked.
 
 - **Course instructors** (on `instructorIds`): course-wide visibility and management for that course.
 - **Project support only** (on `assignedAdvisorIds` but not the course’s `instructorIds`): that project’s weekly updates and meetings only — no course roster changes or purchase approvals for that course.
+
+## 7) Common issues
+
+### “I signed in but don’t see any classes or projects”
+
+You must be added to a class and a project by an admin. Send them the exact email you used to sign in.

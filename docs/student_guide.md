@@ -2,6 +2,13 @@
 
 This guide covers what **students** can see and do: **courses & projects**, **weekly updates**, **meetings (agenda/action items + comments)**, and **purchase requests**.
 
+
+## 0) Signing in 
+
+- Enter your email address
+- You will then receive a link on that email address
+- Click that link, then press "Complete sign-in"
+
 ## 1) What you have access to
 
 - You only see **projects you are assigned to**.
