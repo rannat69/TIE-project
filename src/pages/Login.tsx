@@ -14,11 +14,9 @@ import {
 import { useLayoutEffect, useRef, useState } from "react";
 import { firebaseAuth } from "@/lib/firebase";
 import {
-  createUserWithEmailAndPassword,
   isSignInWithEmailLink,
   sendSignInLinkToEmail,
   signInWithEmailLink,
-  signInWithEmailAndPassword,
 } from "firebase/auth";
 import { toast } from "sonner";
 
@@ -55,7 +53,10 @@ const Login = () => {
   /** Present when the URL is a Firebase email sign-in link (user must tap Complete — auto sign-in breaks with scanners). */
   const [magicLink, setMagicLink] = useState<{ href: string } | null>(null);
   const [magicLinkEmail, setMagicLinkEmail] = useState("");
+  const [nameNewUser, setNameNewUser] = useState("");
   const [authMode, setAuthMode] = useState<"signin" | "signup">("signin");
+
+  const [emailAlreadyRegistered, setEmailAlreadyRegistered] = useState(false);
 
   const backendUrlRaw =
     (import.meta.env.VITE_BACKEND_URL as string | undefined)?.trim() || "";
@@ -75,7 +76,7 @@ const Login = () => {
         authorization: `Bearer ${token}`,
       },
       body: JSON.stringify({
-        name: fullName.trim(),
+        name: nameNewUser.trim(),
         hkustEmail: hkustEmail.trim(),
         programme: programme.trim(),
       }),
@@ -93,6 +94,50 @@ const Login = () => {
     const def = (stored || fromUrl).trim().toLowerCase();
     setMagicLink({ href });
     setMagicLinkEmail(def);
+
+    // Check if email already exists in Firebase
+
+    const checkEmailInFirebase = async () => {
+      try {
+        // emails for magic links often have sign-in methods like "password" / "emailLink"
+
+        const endpoint = `${backendUrl.replace(/\/$/, "")}/admin/users/${encodeURIComponent(def)}`;
+        const res = await fetch(endpoint, {
+          method: "POST",
+          headers: {
+            "content-type": "application/json",
+          },
+          body: JSON.stringify({ email: def }),
+        });
+
+        if (res.ok) {
+          const data = await res.json();
+
+          // Expect backend to respond like: { exists: true/false }
+          const exists = Boolean(data.ok);
+
+          // set state however you want:
+          setEmailAlreadyRegistered(exists);
+          return;
+        }
+
+        if (res.status === 404) {
+          setEmailAlreadyRegistered(false);
+          return;
+        }
+
+        // other unexpected errors
+        const text = await res.text().catch(() => "");
+        throw new Error(`Unexpected status ${res.status}: ${text}`);
+      } catch (err) {
+        console.error("Failed to check sign-in methods:", err);
+        setEmailAlreadyRegistered(false);
+        // handle error (network, invalid email, etc.)
+      }
+    };
+
+    checkEmailInFirebase();
+
     // eslint-disable-next-line react-hooks/exhaustive-deps -- detect email-link URL once when Login mounts
   }, []);
 
@@ -106,6 +151,12 @@ const Login = () => {
       );
       return;
     }
+
+    if (!emailAlreadyRegistered && !nameNewUser.trim()) {
+      toast.error("Enter your full name.");
+      return;
+    }
+
     setBusy(true);
     try {
       await signInWithEmailLink(firebaseAuth, addr, href);
@@ -118,14 +169,18 @@ const Login = () => {
       setMagicLink(null);
       try {
         await ensureUserRow();
-      } catch {
+      } catch (e) {
         toast.error(
           "Signed in, but profile sync failed. Refresh the page or try again.",
         );
+
+        console.log("Error", e);
+
         navigate("/");
         return;
       }
       toast.success("Signed in with email link.");
+
       navigate("/");
     } catch (e) {
       const code = authErrorCode(e);
@@ -277,6 +332,31 @@ const Login = () => {
                       }}
                     />
                   </div>
+
+                  {!emailAlreadyRegistered && (
+                    /*
+                       Display change name if new user 
+                      */
+                    <>
+                      <Label
+                        htmlFor="newName"
+                        className="text-sm font-medium text-foreground"
+                      >
+                        Full name
+                      </Label>
+
+                      <Input
+                        id="newName"
+                        placeholder="Full name"
+                        value={nameNewUser}
+                        onChange={(e) => setNameNewUser(e.target.value)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") void handleCompleteMagicLink();
+                        }}
+                      />
+                    </>
+                  )}
+
                   <Button
                     type="button"
                     className="w-full"
