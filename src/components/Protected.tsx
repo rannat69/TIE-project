@@ -13,14 +13,9 @@ const Protected = ({ role, children }: { role: Role; children: ReactNode }) => {
   const user = useApp((s) => s.users.find((u) => u.id === s.currentUserId));
   const courses = useApp((s) => s.courses);
   const projects = useApp((s) => s.projects);
-
-  while (!user) {
-    console.log("waiting for user...");
-    // wait 1 second
-    const start = Date.now();
-    while (Date.now() - start < 2000) {
-      // do nothing
-    }
+  const start = Date.now();
+  while (Date.now() - start < 2000) {
+    // do nothing
   }
 
   if (!authReady) return null;
