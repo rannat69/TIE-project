@@ -164,7 +164,7 @@ const Login = () => {
       window.history.replaceState(
         {},
         document.title,
-        `${window.location.origin}/login`,
+        `${window.location.origin}/`,
       );
       setMagicLink(null);
       try {
@@ -181,7 +181,18 @@ const Login = () => {
       }
       toast.success("Signed in with email link.");
 
-      navigate("/");
+      if (nameNewUser) {
+        navigate("/student");
+        console.log("navigate /student");
+        window.history.replaceState(
+          {},
+          document.title,
+          `${window.location.origin}/login`,
+        );
+      } else {
+        navigate("/");
+        console.log("navigate /");
+      }
     } catch (e) {
       const code = authErrorCode(e);
       const hint = code ? ` (${code})` : "";

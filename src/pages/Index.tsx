@@ -11,6 +11,8 @@ const Index = () => {
   const courses = useApp((s) => s.courses);
   const projects = useApp((s) => s.projects);
   const location = useLocation();
+
+
   // Still waiting for Firebase Auth to initialise
   if (!authReady) return null;
 
@@ -21,7 +23,8 @@ const Index = () => {
   if (!usersReady) return null;
   // Preserve query/hash so email-link (magic link) params survive / → /login redirect
 
-  if (user) return <Navigate to={getPostLoginPath(user, courses, projects)} replace />;
+  if (user)
+    return <Navigate to={getPostLoginPath(user, courses, projects)} replace />;
 
   return (
     <Navigate
