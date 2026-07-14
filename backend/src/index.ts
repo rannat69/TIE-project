@@ -241,42 +241,39 @@ app.post(
   },
 );
 
-app.post(
-  "/admin/users/:email",
-  async (req, res) => {
-    const { email } = (req.body ?? {}) as {
-      email?: string;
-    };
+app.post("/admin/users/:email", async (req, res) => {
+  const { email } = (req.body ?? {}) as {
+    email?: string;
+  };
 
-    if (!email?.trim()) {
-      return res.status(400).json({ error: " email required" });
-    }
+  if (!email?.trim()) {
+    return res.status(400).json({ error: " email required" });
+  }
 
-    const auth = getAuth();
+  const auth = getAuth();
 
-    // 1) Check if the email exists in Firebase Auth
-    try {
-      await auth.getUserByEmail(email.trim());
-    } catch (err: any) {
-      // User not found
-      if (err?.code === "auth/user-not-found") {
-        return res
-          .status(404)
-          .json({ error: "Email not found in Firebase Auth" });
-      }
-      // Other errors
-      console.error(err);
+  // 1) Check if the email exists in Firebase Auth
+  try {
+    await auth.getUserByEmail(email.trim());
+  } catch (err: any) {
+    // User not found
+    if (err?.code === "auth/user-not-found") {
       return res
-        .status(500)
-        .json({ error: "Failed to check user in Firebase Auth" });
+        .status(404)
+        .json({ error: "Email not found in Firebase Auth" });
     }
+    // Other errors
+    console.error(err);
+    return res
+      .status(500)
+      .json({ error: "Failed to check user in Firebase Auth" });
+  }
 
-    // 2) Proceed with your Firestore write
-    const id = uid("u");
+  // 2) Proceed with your Firestore write
+  const id = uid("u");
 
-    return res.json({ ok: true, id });
-  },
-);
+  return res.json({ ok: true, id });
+});
 
 app.patch(
   "/admin/users/:id/role",
@@ -315,6 +312,19 @@ app.delete(
     const snap = await ref.get();
     if (!snap.exists) return res.status(404).json({ error: "User not found" });
     await ref.delete();
+
+    // Also delete the user in Firebase corresponding to the email address
+    const data = snap.data(); // { id, name, email, ... }
+    const email = data?.email;
+
+    // 1) Find user by email
+    const auth = getAuth();
+    const user = await auth.getUserByEmail(email);
+
+    // 2) Delete user by uid
+    await auth.deleteUser(user.uid);
+
+    console.log(`Deleted user: ${email} (uid: ${user.uid})`);
 
     return res.json({ ok: true });
   },
