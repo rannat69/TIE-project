@@ -27,12 +27,56 @@ export interface Project {
   name: string;
   description: string;
   studentIds: string[];
+  /** Project-scoped support staff (instructor accounts; do not imply course-wide access). */
+  assignedAdvisorIds?: string[];
   progress: number; // 0-100
 }
 
 export type ApprovalStatus = "pending" | "approved" | "needs_revision";
 
 export type PurchaseRequestStatus = "pending" | "approved" | "rejected";
+
+/** Meeting thread key: course instructor or project `assignedAdvisorIds` user id. */
+export type AdvisorThreadId = string;
+
+export interface MeetingItem {
+  id: string;
+  text: string;
+  createdAt: string;
+  createdBy: string;
+  updatedAt?: string;
+  updatedBy?: string;
+}
+
+export interface MeetingComment {
+  id: string;
+  authorId: string;
+  text: string;
+  createdAt: string;
+}
+
+export type MeetingStatus = "draft" | "held";
+
+export interface Meeting {
+  id: string;
+  projectId: string;
+  /** Meeting thread owner (instructor / project support id). */
+  advisorId: AdvisorThreadId;
+  /** Backward compatibility for older docs created before advisorId existed. */
+  advisorTrack?: string;
+  sequence: number;
+  status: MeetingStatus;
+  inheritedFromMeetingId?: string | null;
+  agendaItems: MeetingItem[];
+  actionItems: MeetingItem[];
+  comments?: MeetingComment[];
+  /** Proposed meeting start (ISO). Optional until the team sets it. */
+  proposedAt?: string | null;
+  createdAt: string;
+  createdBy: string;
+  updatedAt?: string;
+  updatedBy?: string;
+}
 
 export interface WeeklyGoal {
   id: string;

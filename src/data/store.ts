@@ -14,8 +14,12 @@ import {
 import { onAuthStateChanged, signOut as fbSignOut } from "firebase/auth";
 import {
   ApprovalStatus,
+  AdvisorThreadId,
   Comment,
   Course,
+  Meeting,
+  MeetingComment,
+  MeetingItem,
   Project,
   PurchaseRequest,
   PurchaseRequestStatus,
@@ -41,6 +45,7 @@ interface AppState {
   projects: Project[];
   updates: WeeklyUpdate[];
   purchaseRequests: PurchaseRequest[];
+  meetings: Meeting[];
 
   init: () => void;
   signOut: () => Promise<void>;
@@ -57,6 +62,7 @@ interface AppState {
   addProject: (p: Omit<Project, "id" | "progress">) => Promise<void>;
   assignStudentToProject: (projectId: string, studentId: string) => Promise<void>;
   removeStudentFromProject: (projectId: string, studentId: string) => Promise<void>;
+  updateProjectAdvisors: (projectId: string, advisorId: string, op: "add" | "remove") => Promise<void>;
 
   // updates
   submitUpdate: (u: Omit<WeeklyUpdate, "id" | "submittedAt" | "status" | "comments">) => void;
@@ -72,6 +78,19 @@ interface AppState {
   // purchasing (separate from weekly updates)
   submitPurchaseRequest: (p: Omit<PurchaseRequest, "id" | "createdAt" | "status">) => void;
   reviewPurchaseRequest: (id: string, status: PurchaseRequestStatus, reviewNote?: string) => void;
+
+  // meetings
+  createMeeting: (
+    projectId: string,
+    advisorId: AdvisorThreadId,
+    inheritFromLatest: boolean,
+    options?: { proposedAt?: string | null },
+  ) => Promise<string>;
+  updateMeetingAgenda: (meetingId: string, agendaItems: MeetingItem[]) => Promise<void>;
+  updateMeetingActionItems: (meetingId: string, actionItems: MeetingItem[]) => Promise<void>;
+  updateMeetingProposedAt: (meetingId: string, proposedAt: string | null) => Promise<void>;
+  setMeetingStatus: (meetingId: string, status: "draft" | "held") => Promise<void>;
+  addMeetingComment: (meetingId: string, authorId: string, text: string) => void;
 }
 
 const palette = [
@@ -150,6 +169,11 @@ export const useApp = create<AppState>()((set, get) => {
         set({ purchaseRequests: snap.docs.map((d) => d.data() as PurchaseRequest) });
       }),
     );
+    unsubs.push(
+      onSnapshot(collection(firestore, "meetings"), (snap) => {
+        set({ meetings: snap.docs.map((d) => d.data() as Meeting) });
+      }),
+    );
   };
 
   const logUpdateEvent = (updateId: string, e: WeeklyUpdateEvent) => {
@@ -171,6 +195,7 @@ export const useApp = create<AppState>()((set, get) => {
     projects: [],
     updates: [],
     purchaseRequests: [],
+    meetings: [],
 
     init: () => {
       if (get().initialized) return;
@@ -474,6 +499,13 @@ export const useApp = create<AppState>()((set, get) => {
         return;
       }
 
+      // Local-only fallback: enforce course roster gate even without backend.
+      const course = get().courses.find((c) => c.id === project.courseId);
+      const rosterIds = (course?.studentIds ?? []) as string[];
+      if (course && !rosterIds.includes(studentId)) {
+        throw new Error("Add student to the course first.");
+      }
+
       await updateDoc(doc(firestore, "projects", projectId), {
         studentIds: [...project.studentIds, studentId],
       });
@@ -504,6 +536,31 @@ export const useApp = create<AppState>()((set, get) => {
       await updateDoc(doc(firestore, "projects", projectId), {
         studentIds: project.studentIds.filter((i) => i !== studentId),
       });
+    },
+
+    updateProjectAdvisors: async (projectId, advisorId, op) => {
+      const project = get().projects.find((p) => p.id === projectId);
+      if (!project) return;
+      const fbUser = firebaseAuth.currentUser;
+      if (backendUrl && fbUser) {
+        const token = await fbUser.getIdToken();
+        const endpoint = `${backendUrl.replace(/\/$/, "")}/projects/${encodeURIComponent(projectId)}/advisors`;
+        const res = await fetch(endpoint, {
+          method: "PATCH",
+          headers: {
+            "content-type": "application/json",
+            authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify({ advisorId, op }),
+        });
+        if (!res.ok) throw new Error(`Backend update project advisors failed (${res.status})`);
+        return;
+      }
+
+      const existing = (project.assignedAdvisorIds ?? []) as string[];
+      const next =
+        op === "add" ? Array.from(new Set([...existing, advisorId])) : existing.filter((x) => x !== advisorId);
+      await updateDoc(doc(firestore, "projects", projectId), { assignedAdvisorIds: next });
     },
 
     // updates
@@ -804,6 +861,128 @@ export const useApp = create<AppState>()((set, get) => {
         reviewedAt: new Date().toISOString(),
         ...(reviewNote?.trim() ? { reviewNote: reviewNote.trim() } : { reviewNote: null }),
       });
+    },
+
+    createMeeting: async (projectId, advisorId, inheritFromLatest, options) => {
+      if (!backendUrl) throw new Error("Missing backend URL");
+      const endpoint = `${backendUrl.replace(/\/$/, "")}/projects/${encodeURIComponent(projectId)}/meetings`;
+      const proposedAt = options?.proposedAt;
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          ...(await authHeader()),
+        },
+        body: JSON.stringify({
+          advisorId,
+          inheritFromLatest,
+          ...(proposedAt !== undefined ? { proposedAt } : {}),
+        }),
+      });
+      if (!res.ok) {
+        const detail = await res.text().catch(() => "");
+        throw new Error(`Create meeting failed (${res.status})${detail?.trim() ? `: ${detail.trim()}` : ""}`);
+      }
+      const json = (await res.json()) as { id?: string };
+      if (!json.id) throw new Error("Create meeting failed (missing id)");
+      return json.id;
+    },
+
+    updateMeetingAgenda: async (meetingId, agendaItems) => {
+      if (!backendUrl) throw new Error("Missing backend URL");
+      const endpoint = `${backendUrl.replace(/\/$/, "")}/meetings/${encodeURIComponent(meetingId)}/agenda`;
+      const res = await fetch(endpoint, {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          ...(await authHeader()),
+        },
+        body: JSON.stringify({ agendaItems }),
+      });
+      if (!res.ok) {
+        const detail = await res.text().catch(() => "");
+        throw new Error(`Update agenda failed (${res.status})${detail?.trim() ? `: ${detail.trim()}` : ""}`);
+      }
+    },
+
+    updateMeetingActionItems: async (meetingId, actionItems) => {
+      if (!backendUrl) throw new Error("Missing backend URL");
+      const endpoint = `${backendUrl.replace(/\/$/, "")}/meetings/${encodeURIComponent(meetingId)}/actionItems`;
+      const res = await fetch(endpoint, {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          ...(await authHeader()),
+        },
+        body: JSON.stringify({ actionItems }),
+      });
+      if (!res.ok) {
+        const detail = await res.text().catch(() => "");
+        throw new Error(`Update action items failed (${res.status})${detail?.trim() ? `: ${detail.trim()}` : ""}`);
+      }
+    },
+
+    updateMeetingProposedAt: async (meetingId, proposedAt) => {
+      if (!backendUrl) throw new Error("Missing backend URL");
+      const endpoint = `${backendUrl.replace(/\/$/, "")}/meetings/${encodeURIComponent(meetingId)}/details`;
+      const res = await fetch(endpoint, {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          ...(await authHeader()),
+        },
+        body: JSON.stringify({ proposedAt }),
+      });
+      if (!res.ok) {
+        const detail = await res.text().catch(() => "");
+        throw new Error(`Update meeting details failed (${res.status})${detail?.trim() ? `: ${detail.trim()}` : ""}`);
+      }
+    },
+
+    setMeetingStatus: async (meetingId, status) => {
+      if (!backendUrl) throw new Error("Missing backend URL");
+      const endpoint = `${backendUrl.replace(/\/$/, "")}/meetings/${encodeURIComponent(meetingId)}/status`;
+      const res = await fetch(endpoint, {
+        method: "PATCH",
+        headers: {
+          "content-type": "application/json",
+          ...(await authHeader()),
+        },
+        body: JSON.stringify({ status }),
+      });
+      if (!res.ok) {
+        const detail = await res.text().catch(() => "");
+        throw new Error(`Update meeting status failed (${res.status})${detail?.trim() ? `: ${detail.trim()}` : ""}`);
+      }
+    },
+
+    addMeetingComment: (meetingId, authorId, text) => {
+      const meeting = get().meetings.find((m) => m.id === meetingId);
+      if (!meeting) return;
+      if (!text.trim()) return;
+
+      if (backendUrl) {
+        void (async () => {
+          const endpoint = `${backendUrl.replace(/\/$/, "")}/meetings/${encodeURIComponent(meetingId)}/comments`;
+          const res = await fetch(endpoint, {
+            method: "POST",
+            headers: {
+              "content-type": "application/json",
+              ...(await authHeader()),
+            },
+            body: JSON.stringify({ text }),
+          });
+          if (!res.ok) throw new Error(`Add meeting comment failed (${res.status})`);
+        })().catch(() => {});
+        return;
+      }
+
+      const commentId = uid("mc");
+      const comments: MeetingComment[] = [
+        ...(meeting.comments ?? []),
+        { id: commentId, authorId, text: text.trim(), createdAt: new Date().toISOString() },
+      ];
+      void updateDoc(doc(firestore, "meetings", meetingId), { comments });
     },
   };
 });

@@ -70,7 +70,7 @@ Send an `Authorization: Bearer <FIREBASE_ID_TOKEN>` header to:
 
 The backend will verify the token using Firebase Admin and return your `uid` (and email if present).
 
-### 4) Frontend configuration
+### 5) Frontend configuration
 
 Copy vite.config.ts.example to vite.config.ts, and modify the frontend port if necessary. 
 

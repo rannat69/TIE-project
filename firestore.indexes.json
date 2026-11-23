@@ -1,0 +1,14 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "meetings",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "projectId", "order": "ASCENDING" },
+        { "fieldPath": "advisorId", "order": "ASCENDING" },
+        { "fieldPath": "sequence", "order": "DESCENDING" }
+      ]
+    }
+  ],
+  "fieldOverrides": []
+}

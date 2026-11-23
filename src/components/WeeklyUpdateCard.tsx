@@ -433,14 +433,6 @@ export const WeeklyUpdateCard = ({ update, viewer, defaultOpen = false }: Props)
               </Button>
               <Button
                 size="sm"
-                variant={update.status === "pending" ? "default" : "outline"}
-                onClick={() => setApproval(update.id, "pending")}
-                disabled={update.status === "approved"}
-              >
-                Pending
-              </Button>
-              <Button
-                size="sm"
                 onClick={() => setApproval(update.id, "approved")}
                 disabled={update.status === "approved"}
                 className={

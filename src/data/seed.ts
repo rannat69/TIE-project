@@ -4,6 +4,7 @@ export const seedUsers: User[] = [
   { id: "u-admin", name: "Dr. Eliza Hart", email: "admin@uni.edu", role: "admin", avatarColor: "217 60% 22%" },
   { id: "u-i1", name: "Prof. Marcus Bell", email: "m.bell@uni.edu", role: "instructor", avatarColor: "188 70% 38%" },
   { id: "u-i2", name: "Prof. Aisha Khan", email: "a.khan@uni.edu", role: "instructor", avatarColor: "262 55% 45%" },
+  { id: "u-a1", name: "Lilly Tan", email: "lilly.tan@uni.edu", role: "instructor", avatarColor: "200 55% 34%" },
   { id: "u-s1", name: "Liam Chen", email: "liam@uni.edu", role: "student", avatarColor: "152 55% 36%" },
   { id: "u-s2", name: "Maya Okafor", email: "maya@uni.edu", role: "student", avatarColor: "35 90% 48%" },
   { id: "u-s3", name: "Noah Patel", email: "noah@uni.edu", role: "student", avatarColor: "0 70% 48%" },
@@ -45,6 +46,7 @@ export const seedProjects: Project[] = [
     name: "Atlas — Campus Navigation",
     description: "AR-assisted indoor wayfinding for accessibility.",
     studentIds: ["u-s1", "u-s2", "u-s3"],
+    assignedAdvisorIds: ["u-a1"],
     progress: 62,
   },
   {

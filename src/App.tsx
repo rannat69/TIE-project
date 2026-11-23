@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Route, Routes } from "react-router-dom";
+import { BrowserRouter, Navigate, Route, Routes } from "react-router-dom";
 import { useEffect } from "react";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { Toaster } from "@/components/ui/toaster";
@@ -28,6 +28,7 @@ const AppInner = () => {
         <Route path="/login" element={<Login />} />
         <Route path="/admin" element={<Protected role="admin"><AdminDashboard /></Protected>} />
         <Route path="/instructor" element={<Protected role="instructor"><InstructorDashboard /></Protected>} />
+        <Route path="/advisor" element={<Navigate to="/instructor" replace />} />
         <Route path="/student" element={<Protected role="student"><StudentDashboard /></Protected>} />
         <Route path="*" element={<NotFound />} />
       </Routes>
